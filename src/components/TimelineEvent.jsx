@@ -35,6 +35,7 @@ export function TimelineEvent({ event, assetsById, selected, onSelect, onStory }
         </label>
       </div>
       {event.figurine ? <span className="figurine-tag">● 手办出镜</span> : null}
+      {event.source === 'ai' ? <span className="confidence-tag">AI {Math.round((event.confidence || 0) * 100)}%</span> : null}
     </article>
   )
 }

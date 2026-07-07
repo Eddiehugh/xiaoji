@@ -1,6 +1,6 @@
 import { Icon } from './Icon'
 
-export function Header({ onNewTrip, onReset, syncStatus }) {
+export function Header({ onNewTrip, onReset, onShare, onLogout, syncStatus, user }) {
   return (
     <header className="topbar">
       <div className="brand">
@@ -17,17 +17,25 @@ export function Header({ onNewTrip, onReset, syncStatus }) {
           手办护照
         </button>
       </nav>
-      <div className="sync-chip" title="本地保存状态">
+      <div className="sync-chip" title="同步状态">
         <span className="sync-dot" />
         <span>{syncStatus}</span>
       </div>
+      <span className="user-chip">{user?.name || '未登录'}</span>
+      <button className="secondary compact" onClick={onShare}>
+        <Icon name="book" />
+        分享
+      </button>
       <button className="secondary compact" onClick={onReset}>
         <Icon name="refresh" />
-        清空草稿
+        重置
       </button>
       <button className="primary compact" onClick={onNewTrip}>
         <Icon name="plus" />
         新建旅行
+      </button>
+      <button className="secondary compact" onClick={onLogout}>
+        退出
       </button>
     </header>
   )

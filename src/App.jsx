@@ -1,172 +1,183 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AssetRail } from './components/AssetRail'
 import { Generator } from './components/Generator'
 import { Header } from './components/Header'
+import { LoginPanel } from './components/LoginPanel'
 import { NewTripModal } from './components/NewTripModal'
+import { SharePage } from './components/SharePage'
 import { Workspace } from './components/Workspace'
-import { cloneEvents, seedAssets, seedEvents } from './data/seedData'
-import {
-  clearTripState,
-  clearUploadRecords,
-  loadTripState,
-  loadUploadRecords,
-  saveTripState,
-  saveUploadRecord,
-} from './lib/persistence'
-import { createUploadAssets, revokeUploadUrls } from './lib/uploadAssets'
+import { seedAssets } from './data/seedData'
+import { api, getStoredSession, login, logout } from './lib/api'
 
 export function App() {
+  const shareMatch = window.location.pathname.match(/^\/share\/([^/]+)/)
+  const [session, setSession] = useState(() => getStoredSession())
+  const [trips, setTrips] = useState([])
+  const [trip, setTrip] = useState(null)
   const [uploads, setUploads] = useState([])
-  const [events, setEvents] = useState(() => cloneEvents(seedEvents))
-  const [selectedId, setSelectedId] = useState('arrival')
+  const [events, setEvents] = useState([])
+  const [selectedId, setSelectedId] = useState('')
   const [analysing, setAnalysing] = useState(false)
   const [mode, setMode] = useState('plog')
   const [showNew, setShowNew] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
-  const [syncStatus, setSyncStatus] = useState('正在恢复本地草稿…')
-  const uploadUrlsRef = useRef([])
+  const [syncStatus, setSyncStatus] = useState('连接后端中…')
+  const [loginError, setLoginError] = useState('')
+  const [shareUrl, setShareUrl] = useState('')
 
-  useEffect(() => {
-    uploadUrlsRef.current = uploads
-  }, [uploads])
+  const assets = useMemo(() => [...uploads, ...(trip?.seedAssets || seedAssets)], [uploads, trip])
 
-  useEffect(() => {
-    let cancelled = false
+  const refreshTrips = async () => {
+    const result = await api.getTrips()
+    setTrips(result.trips)
+    return result.trips
+  }
 
-    const bootstrap = async () => {
-      try {
-        const [tripState, storedUploads] = await Promise.all([loadTripState(), loadUploadRecords()])
-        if (cancelled) return
+  const loadTrip = async (tripId) => {
+    setSyncStatus('正在加载旅行…')
+    const result = await api.getTrip(tripId)
+    setTrip(result.trip)
+    setUploads(result.trip.assets || [])
+    setEvents(result.trip.events || [])
+    setSelectedId(result.trip.events?.[0]?.id || '')
+    setSyncStatus('已连接后端')
+  }
 
-        if (tripState?.events?.length) setEvents(cloneEvents(tripState.events))
-        if (tripState?.selectedId) setSelectedId(tripState.selectedId)
-        if (tripState?.mode) setMode(tripState.mode)
-
-        const restoredUploads = storedUploads.map((record) => ({
-          id: record.id,
-          kind: 'upload',
-          src: URL.createObjectURL(record.blob),
-          alt: record.name,
-          name: record.name,
-          createdAt: record.createdAt,
-          isNew: false,
-        }))
-        setUploads(restoredUploads)
-        setSyncStatus(tripState ? '草稿已恢复' : '使用默认示例')
-      } catch (error) {
-        console.error('Failed to restore local project state', error)
-        if (!cancelled) setSyncStatus('本地恢复失败，已回到默认示例')
-      } finally {
-        if (!cancelled) setHydrated(true)
+  const bootstrap = async () => {
+    if (!session?.token) return
+    try {
+      const loadedTrips = await refreshTrips()
+      if (loadedTrips[0]) await loadTrip(loadedTrips[0].id)
+      else setSyncStatus('还没有旅行项目')
+    } catch (error) {
+      setSyncStatus(error.status === 401 ? '登录已失效' : '后端服务不可用')
+      if (error.status === 401) {
+        logout()
+        setSession(null)
       }
     }
-
-    bootstrap()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  }
 
   useEffect(() => {
-    if (!hydrated) return
-    saveTripState({
-      events,
-      selectedId,
-      mode,
-      savedAt: Date.now(),
-    })
-    setSyncStatus('已保存到本地')
-  }, [events, selectedId, mode, hydrated])
+    if (!shareMatch) bootstrap()
+  }, [session?.token])
 
   useEffect(() => {
-    return () => {
-      revokeUploadUrls(uploadUrlsRef.current)
-    }
-  }, [])
+    if (!trip?.id) return
+    const timer = setTimeout(() => {
+      api.saveTrip(trip.id, { events }).catch((error) => {
+        console.error('Failed to save trip events', error)
+        setSyncStatus('时间线保存失败')
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [events, trip?.id])
 
-  const assets = useMemo(() => [...uploads, ...seedAssets], [uploads])
+  const handleLogin = async (payload) => {
+    setLoginError('')
+    setSyncStatus('正在登录…')
+    try {
+      const next = await login(payload)
+      setSession(next)
+    } catch (error) {
+      setLoginError(error.message === 'Failed to fetch' ? '请先运行 npm run api 启动后端服务' : error.message)
+      setSyncStatus('登录失败')
+    }
+  }
+
+  const pollAnalysisJob = async (jobId) => {
+    const result = await api.getJob(jobId)
+    if (result.job.status === 'done') {
+      setTrip(result.trip)
+      setUploads(result.trip.assets || [])
+      setEvents(result.trip.events || [])
+      setSelectedId(result.trip.events?.[0]?.id || selectedId)
+      setSyncStatus('照片理解完成，时间线已更新')
+      setAnalysing(false)
+      await refreshTrips()
+      return
+    }
+    if (result.job.status === 'failed') {
+      setSyncStatus(`照片理解失败：${result.job.error || '可重试'}`)
+      setAnalysing(false)
+      return
+    }
+    setSyncStatus(`照片理解任务 ${result.job.status}`)
+    setTimeout(() => pollAnalysisJob(jobId), 1000)
+  }
 
   const addFiles = async (files) => {
-    if (!files.length) return
+    if (!files.length || !trip?.id) return
     setAnalysing(true)
-    setSyncStatus('正在保存上传素材…')
-
-    const additions = createUploadAssets(files)
-
+    setSyncStatus('正在上传到对象存储…')
     try {
-      await Promise.all(
-        additions.map((record) =>
-          saveUploadRecord({
-            id: record.id,
-            name: record.name,
-            type: record.blob.type,
-            blob: record.blob,
-            createdAt: record.createdAt,
-          }),
-        ),
-      )
-
-      await new Promise((resolve) => setTimeout(resolve, 1100))
-
-      setUploads((prev) => [...additions, ...prev])
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === selectedId
-            ? {
-                ...event,
-                images: [...additions.map((asset) => asset.id), ...event.images].slice(0, 4),
-              }
-            : event,
-        ),
-      )
-      setSyncStatus('上传素材已保存')
+      const result = await api.uploadAssets(trip.id, files)
+      setUploads((prev) => [...result.assets, ...prev])
+      setSyncStatus('上传成功，正在分析 EXIF / OCR / 图片内容…')
+      pollAnalysisJob(result.job.id)
     } catch (error) {
-      console.error('Upload persistence failed', error)
-      setUploads((prev) => [...additions, ...prev])
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === selectedId
-            ? {
-                ...event,
-                images: [...additions.map((asset) => asset.id), ...event.images].slice(0, 4),
-              }
-            : event,
-        ),
-      )
-      setSyncStatus('上传已加入，但本地持久化失败')
-    } finally {
       setAnalysing(false)
+      setSyncStatus(error.message === 'Failed to fetch' ? '上传失败：请先运行 npm run api' : `上传失败：${error.message}`)
     }
+  }
+
+  const createTrip = async (payload) => {
+    const result = await api.createTrip(payload)
+    setShowNew(false)
+    await refreshTrips()
+    await loadTrip(result.trip.id)
   }
 
   const resetProject = async () => {
-    revokeUploadUrls(uploadUrlsRef.current)
-    setSyncStatus('正在清空本地草稿…')
-
-    try {
-      await Promise.all([clearUploadRecords(), clearTripState()])
-    } catch (error) {
-      console.error('Failed to clear local data', error)
-    }
-
-    setUploads([])
-    setEvents(cloneEvents(seedEvents))
-    setSelectedId('arrival')
-    setMode('plog')
-    setShowNew(false)
-    setSyncStatus('本地草稿已清空')
+    if (!trip?.id) return
+    const freshEvents = []
+    setEvents(freshEvents)
+    await api.saveTrip(trip.id, { events: freshEvents })
+    setSyncStatus('当前旅行时间线已重置')
   }
+
+  const createShare = async () => {
+    if (!trip?.id) return
+    const result = await api.shareTrip(trip.id)
+    setShareUrl(result.url)
+    setSyncStatus('公开分享页已生成')
+  }
+
+  if (shareMatch) return <SharePage slug={shareMatch[1]} />
+  if (!session?.token) return <LoginPanel onLogin={handleLogin} error={loginError} />
 
   return (
     <div className="app-shell">
-      <Header onNewTrip={() => setShowNew(true)} onReset={resetProject} syncStatus={syncStatus} />
+      <Header
+        user={session.user}
+        onNewTrip={() => setShowNew(true)}
+        onReset={resetProject}
+        onShare={createShare}
+        onLogout={() => {
+          logout()
+          setSession(null)
+        }}
+        syncStatus={syncStatus}
+      />
+      {shareUrl ? (
+        <a className="share-banner" href={shareUrl} target="_blank" rel="noreferrer">
+          分享页已生成：{window.location.origin}
+          {shareUrl}
+        </a>
+      ) : null}
       <div className="app-grid">
-        <AssetRail assets={assets} onFiles={addFiles} analysing={analysing} />
-        <Workspace events={events} setEvents={setEvents} assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} />
-        <Generator events={events} assets={assets} mode={mode} setMode={setMode} />
+        <AssetRail
+          assets={assets}
+          onFiles={addFiles}
+          analysing={analysing}
+          trips={trips}
+          selectedTripId={trip?.id}
+          onSelectTrip={loadTrip}
+          onCreateTrip={() => setShowNew(true)}
+        />
+        <Workspace trip={trip} events={events} setEvents={setEvents} assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} />
+        <Generator tripId={trip?.id} events={events} assets={assets} mode={mode} setMode={setMode} />
       </div>
-      {showNew ? <NewTripModal onClose={() => setShowNew(false)} /> : null}
+      {showNew ? <NewTripModal onClose={() => setShowNew(false)} onCreate={createTrip} /> : null}
     </div>
   )
 }

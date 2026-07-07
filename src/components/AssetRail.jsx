@@ -1,13 +1,20 @@
 import { useRef } from 'react'
 import { Icon } from './Icon'
+import { ProjectList } from './ProjectList'
 
-export function AssetRail({ assets, onFiles, analysing }) {
+function isSupportedImage(file) {
+  const name = file.name.toLowerCase()
+  return file.type.startsWith('image/') || name.endsWith('.heic') || name.endsWith('.heif')
+}
+
+export function AssetRail({ assets, onFiles, analysing, trips, selectedTripId, onSelectTrip, onCreateTrip }) {
   const inputRef = useRef(null)
 
-  const acceptFiles = (list) => onFiles(Array.from(list || []).filter((file) => file.type.startsWith('image/')))
+  const acceptFiles = (list) => onFiles(Array.from(list || []).filter(isSupportedImage))
 
   return (
     <aside className="asset-rail">
+      <ProjectList trips={trips} selectedId={selectedTripId} onSelect={onSelectTrip} onCreate={onCreateTrip} />
       <div className="panel-title">
         <h2>素材</h2>
         <span>{assets.length} 张</span>
@@ -23,12 +30,12 @@ export function AssetRail({ assets, onFiles, analysing }) {
       >
         <Icon name={analysing ? 'spark' : 'upload'} size={24} />
         <strong>{analysing ? '正在理解照片…' : '继续上传'}</strong>
-        <span>{analysing ? '提取时间、地点与场景' : '拖拽照片到这里'}</span>
+        <span>{analysing ? '提取时间、地点与场景' : '支持 JPG、PNG、WebP、HEIC'}</span>
       </button>
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         multiple
         hidden
         onChange={(e) => acceptFiles(e.target.files)}
@@ -41,7 +48,7 @@ export function AssetRail({ assets, onFiles, analysing }) {
           </figure>
         ))}
       </div>
-      <p className="rail-foot">上传素材会保存在浏览器本地，刷新页面后仍可恢复。</p>
+      <p className="rail-foot">上传素材会保存到后端对象存储，并触发 EXIF / OCR / 图片理解任务。</p>
     </aside>
   )
 }
