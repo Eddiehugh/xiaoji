@@ -11,7 +11,7 @@ function uniqueAssets(events, assets) {
   })
 }
 
-export function PlogPreview({ trip, events, assets, style }) {
+export function PlogPreview({ trip, events, assets, style, generatedResult, withFigurine }) {
   const chosen = uniqueAssets(events, assets)
   const [hero, second, third] = chosen
   const title = trip?.title || '新的旅行'
@@ -20,10 +20,10 @@ export function PlogPreview({ trip, events, assets, style }) {
   const summary = events[0]?.story || (chosen.length ? '新的旅行素材已准备好，可以生成 Plog。' : '上传照片后，这里会显示新的 Plog 预览。')
 
   return (
-    <div className={`plog-preview style-${style}`} id="plog-preview">
+    <div className={`plog-preview style-${style} ${generatedResult ? 'generated' : ''}`} id="plog-preview">
       <div className="plog-head">
         <span>{title}</span>
-        <small>{dateLabel}</small>
+        <small>{generatedResult ? `已生成 · ${generatedResult.style}` : dateLabel}</small>
       </div>
       {hero ? <DisplayImage className="plog-hero" asset={hero} alt={hero.alt || 'Plog 主图'} /> : <div className="plog-empty">上传照片后生成 Plog</div>}
       <div className="plog-pair">
@@ -31,6 +31,7 @@ export function PlogPreview({ trip, events, assets, style }) {
         {third ? <DisplayImage asset={third} alt={third.alt || '旅行照片'} /> : <div className="plog-slot">等待照片</div>}
       </div>
       <p>{summary}</p>
+      {generatedResult ? <em className="generated-ribbon">{withFigurine ? '手办旅行版' : '旅行版'} · {generatedResult.style}</em> : null}
       <span className="stamp">
         {place}
         <br />

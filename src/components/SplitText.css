@@ -1,0 +1,11 @@
+.split-parent {
+  display: inline-block;
+  overflow: hidden;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.split-char {
+  display: inline-block;
+  will-change: transform, opacity;
+}

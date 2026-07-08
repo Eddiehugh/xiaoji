@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AssetRail } from './components/AssetRail'
 import { Generator } from './components/Generator'
 import { Header } from './components/Header'
+import LiquidEther from './components/LiquidEther'
 import { LoginPanel } from './components/LoginPanel'
 import { ImagePreviewModal } from './components/ImagePreviewModal'
 import { NewTripModal } from './components/NewTripModal'
@@ -151,6 +152,14 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <LiquidEther
+        colors={['#1BE7D7', '#FF7A45', '#7C4DFF']}
+        mouseForce={14}
+        resolution={0.45}
+        autoDemo
+        autoSpeed={0.45}
+        className="app-ether"
+      />
       <Header
         user={session.user}
         onNewTrip={() => setShowNew(true)}
@@ -188,7 +197,7 @@ export function App() {
           setSelectedId={setSelectedId}
           onPreview={setPreviewAsset}
         />
-        <Generator trip={trip} events={events} assets={assets} mode={mode} setMode={setMode} />
+        <Generator trip={trip} events={events} assets={assets} figurines={session.user?.figurines || []} mode={mode} setMode={setMode} />
       </div>
       {previewAsset ? <ImagePreviewModal asset={previewAsset} onClose={() => setPreviewAsset(null)} /> : null}
       {showNew ? <NewTripModal onClose={() => setShowNew(false)} onCreate={createTrip} /> : null}

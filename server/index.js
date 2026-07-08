@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { seedAssets, seedEvents } from '../src/data/seedData.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const storageDir = path.join(__dirname, 'storage')
+const storageDir = process.env.VERCEL ? path.join('/tmp', 'xiaoji-storage') : path.join(__dirname, 'storage')
 const objectsDir = path.join(storageDir, 'objects')
 const dbPath = path.join(storageDir, 'db.json')
 const port = Number(process.env.API_PORT || 8787)
@@ -27,7 +27,7 @@ const contentTypes = new Map([
   ['.heif', 'image/heif'],
 ])
 
-async function ensureStorage() {
+export async function ensureStorage() {
   await mkdir(objectsDir, { recursive: true })
   if (!existsSync(dbPath)) {
     await saveDb({ users: [], sessions: [], trips: [], assets: [], jobs: [], shares: [] })
@@ -348,6 +348,8 @@ async function runGenerationJob(jobId) {
     target.result = {
       title: `${trip.title} ${target.mode === 'vlog' ? 'Vlog' : 'Plog'}`,
       format: target.mode === 'vlog' ? '9:16 MP4 任务方案' : '3:4 长图任务方案',
+      style: target.style,
+      withFigurine: Boolean(target.withFigurine),
       summary: trip.events.map((event) => event.story).join(' '),
       reusable: true,
     }
@@ -361,13 +363,14 @@ function scheduleJob(job) {
   if (job.type === 'generation') setTimeout(() => runGenerationJob(job.id), 50)
 }
 
-async function route(req, res) {
+export async function route(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`)
   const pathname = decodeURIComponent(url.pathname)
   if (req.method === 'OPTIONS') return json(res, 204, {})
 
-  if (req.method === 'GET' && pathname.startsWith('/objects/')) {
-    const objectKey = path.basename(pathname.replace('/objects/', ''))
+  const objectPrefix = pathname.startsWith('/objects/') ? '/objects/' : pathname.startsWith('/api/objects/') ? '/api/objects/' : ''
+  if (req.method === 'GET' && objectPrefix) {
+    const objectKey = path.basename(pathname.replace(objectPrefix, ''))
     const objectPath = path.join(objectsDir, objectKey)
     if (!existsSync(objectPath)) return json(res, 404, { error: 'not_found' })
     const info = await stat(objectPath)
@@ -386,9 +389,12 @@ async function route(req, res) {
     const email = String(input.email || 'demo@xiaoji.local').trim().toLowerCase()
     let user = db.users.find((item) => item.email === email)
     if (!user) {
-      user = { id: randomUUID(), email, name: input.name || email.split('@')[0], createdAt: Date.now() }
+      user = { id: randomUUID(), email, name: input.name || email.split('@')[0], figurines: input.figurines || [], createdAt: Date.now() }
       db.users.push(user)
       db.trips.push(defaultTrip(user.id))
+    } else {
+      user.name = input.name || user.name
+      if (Array.isArray(input.figurines) && input.figurines.length) user.figurines = input.figurines
     }
     const session = { token: randomUUID(), userId: user.id, createdAt: Date.now() }
     db.sessions.push(session)
@@ -495,6 +501,7 @@ async function route(req, res) {
         type: 'generation',
         mode: input.mode || 'plog',
         style: input.style || 'journal',
+        withFigurine: Boolean(input.withFigurine),
         status: 'queued',
         stage: 'queued',
         message: '等待AI生成',
@@ -540,15 +547,17 @@ async function route(req, res) {
   return json(res, 404, { error: 'not_found' })
 }
 
-await ensureStorage()
+if (!process.env.VERCEL) {
+  await ensureStorage()
 
-http
-  .createServer((req, res) => {
-    route(req, res).catch((error) => {
-      console.error(error)
-      json(res, 500, { error: 'internal_error', message: error.message })
+  http
+    .createServer((req, res) => {
+      route(req, res).catch((error) => {
+        console.error(error)
+        json(res, 500, { error: 'internal_error', message: error.message })
+      })
     })
-  })
-  .listen(port, () => {
-    console.log(`Xiaoji API listening on http://127.0.0.1:${port}`)
-  })
+    .listen(port, () => {
+      console.log(`Xiaoji API listening on http://127.0.0.1:${port}`)
+    })
+}
