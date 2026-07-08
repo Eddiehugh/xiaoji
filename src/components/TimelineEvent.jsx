@@ -1,13 +1,25 @@
 import { Icon } from './Icon'
 import { DisplayImage } from './DisplayImage'
 
+function displayTime(time) {
+  if (!time) return '待确认'
+  const parts = String(time)
+    .split(/[—–-]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const unique = [...new Set(parts)]
+  if (unique.length > 1) return `${unique[0]} — ${unique[unique.length - 1]}`
+  return unique[0] || String(time)
+}
+
 export function TimelineEvent({ event, assetsById, selected, onSelect, onStory, onPreview = () => {} }) {
   return (
     <article className={`timeline-event ${selected ? 'selected' : ''}`} onClick={onSelect}>
       <span className="timeline-node" />
       <div className="event-date">
-        <b>{event.date}</b>
-        <strong>{event.title}</strong>
+        <b>{displayTime(event.time)}</b>
+        <strong>{event.place || event.title}</strong>
+        <span>{event.title}</span>
       </div>
       <div className="event-body">
         <div className="event-photos">
@@ -31,11 +43,11 @@ export function TimelineEvent({ event, assetsById, selected, onSelect, onStory, 
         <div className="event-meta">
           <span>
             <Icon name="pin" size={15} />
-            {event.place}
+            {event.date}
           </span>
           <span>
             <Icon name="clock" size={15} />
-            {event.time}
+            {event.source === 'ai' ? 'AI 自动整理' : '手动时间节点'}
           </span>
         </div>
         <label className="story-field">

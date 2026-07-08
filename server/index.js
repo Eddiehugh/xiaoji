@@ -125,6 +125,7 @@ function defaultTrip(userId) {
     endDate: '2026-07-05',
     events: seedEvents.map((event) => ({ ...event, images: [...event.images], confidence: 0.9, source: 'seed' })),
     seedAssets,
+    figurines: [],
     createdAt: now,
     updatedAt: now,
   }
@@ -255,11 +256,18 @@ function buildTimeline(trip, analyses) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, items], index) => {
       const top = items[0]
+      const times = [
+        ...new Set(
+          items
+            .map((item) => item.takenAt?.slice(11, 16))
+            .filter(Boolean),
+        ),
+      ]
       return {
         id: `auto-${date.replace(/\W/g, '')}-${index}`,
         date,
         title: top.title || `旅行片段 ${index + 1}`,
-        time: items.map((item) => item.takenAt?.slice(11, 16)).filter(Boolean).join(' — ') || '自动识别',
+        time: times.length > 1 ? `${times[0]} — ${times[times.length - 1]}` : times[0] || '自动识别',
         place: [...new Set(items.map((item) => item.place).filter(Boolean))].join('、') || '待确认地点',
         story: top.story || '照片已自动归入这段旅程，可继续手动修正。',
         images: items.map((item) => item.assetId).filter(Boolean).slice(0, 4),
@@ -416,7 +424,12 @@ export async function route(req, res) {
 
   if (req.method === 'GET' && pathname === '/api/me') return json(res, 200, { user })
   if (req.method === 'GET' && pathname === '/api/trips') {
-    return json(res, 200, { trips: db.trips.filter((trip) => trip.userId === user.id).sort((a, b) => b.updatedAt - a.updatedAt) })
+    return json(res, 200, {
+      trips: db.trips
+        .filter((trip) => trip.userId === user.id)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((trip) => publicTrip(db, trip)),
+    })
   }
   if (req.method === 'POST' && pathname === '/api/trips') {
     const input = await readJson(req)
@@ -428,6 +441,7 @@ export async function route(req, res) {
       endDate: input.endDate || '',
       events: [],
       seedAssets: [],
+      figurines: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
@@ -445,7 +459,10 @@ export async function route(req, res) {
     if (req.method === 'PATCH' && !action) {
       const input = await readJson(req)
       if (Array.isArray(input.events)) trip.events = input.events
+      if (Array.isArray(input.figurines)) trip.figurines = input.figurines
       if (input.title) trip.title = input.title
+      if (Object.prototype.hasOwnProperty.call(input, 'startDate')) trip.startDate = input.startDate
+      if (Object.prototype.hasOwnProperty.call(input, 'endDate')) trip.endDate = input.endDate
       trip.updatedAt = Date.now()
       await saveDb(db)
       return json(res, 200, { trip: publicTrip(db, trip) })

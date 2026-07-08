@@ -132,6 +132,20 @@ export function App() {
     await loadTrip(result.trip.id)
   }
 
+  const updateFigurines = async (figurines) => {
+    if (!trip?.id) return
+    const nextTrip = { ...trip, figurines }
+    setTrip(nextTrip)
+    setSyncStatus('手办配置已更新')
+    try {
+      const result = await api.saveTrip(trip.id, { figurines })
+      setTrip(result.trip)
+      await refreshTrips()
+    } catch (error) {
+      setSyncStatus(`手办配置保存失败：${error.message}`)
+    }
+  }
+
   const resetProject = async () => {
     if (!trip?.id) return
     const freshEvents = []
@@ -197,7 +211,15 @@ export function App() {
           setSelectedId={setSelectedId}
           onPreview={setPreviewAsset}
         />
-        <Generator trip={trip} events={events} assets={assets} figurines={session.user?.figurines || []} mode={mode} setMode={setMode} />
+        <Generator
+          trip={trip}
+          events={events}
+          assets={assets}
+          figurines={trip?.figurines || []}
+          onFigurinesChange={updateFigurines}
+          mode={mode}
+          setMode={setMode}
+        />
       </div>
       {previewAsset ? <ImagePreviewModal asset={previewAsset} onClose={() => setPreviewAsset(null)} /> : null}
       {showNew ? <NewTripModal onClose={() => setShowNew(false)} onCreate={createTrip} /> : null}

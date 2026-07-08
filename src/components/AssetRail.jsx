@@ -17,8 +17,8 @@ export function AssetRail({ assets, onFiles, onPreview, analysing, trips, select
     <aside className="asset-rail">
       <ProjectList trips={trips} selectedId={selectedTripId} onSelect={onSelectTrip} onCreate={onCreateTrip} />
       <div className="panel-title">
-        <h2>素材</h2>
-        <span>{assets.length} 张</span>
+        <h2>照片库</h2>
+        <span>全部照片⌄</span>
       </div>
       <button
         className={`dropzone ${analysing ? 'analysing' : ''}`}
@@ -56,7 +56,12 @@ export function AssetRail({ assets, onFiles, onPreview, analysing, trips, select
           </button>
         ))}
       </div>
-      <p className="rail-foot">上传素材会保存到后端对象存储，并触发 EXIF / OCR / 图片理解任务。</p>
+      <div className="rail-foot">
+        <span>
+          已选中 <strong>{assets.length}</strong> 张
+        </span>
+        <small>当前项目照片库</small>
+      </div>
     </aside>
   )
 }

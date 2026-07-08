@@ -3,9 +3,21 @@ import { api } from '../lib/api'
 import { downloadPlogImage } from '../lib/plogExport'
 import { Icon } from './Icon'
 import { PlogPreview } from './PlogPreview'
+import { ProjectFigurineStudio } from './ProjectFigurineStudio'
 import { VlogPreview } from './VlogPreview'
 
-export function Generator({ trip, events, assets, figurines = [], mode, setMode }) {
+const STYLE_OPTIONS = [
+  ['journal', '胶片'],
+  ['editorial', '清新'],
+  ['minimal', '复古'],
+  ['toy', '日系'],
+  ['cinematic', '电影感'],
+  ['custom', '自定义'],
+]
+
+const STYLE_LABELS = Object.fromEntries(STYLE_OPTIONS)
+
+export function Generator({ trip, events, assets, figurines = [], onFigurinesChange, mode, setMode }) {
   const [style, setStyle] = useState('journal')
   const [customStyle, setCustomStyle] = useState('')
   const [withFigurine, setWithFigurine] = useState(true)
@@ -15,7 +27,7 @@ export function Generator({ trip, events, assets, figurines = [], mode, setMode 
   const [playing, setPlaying] = useState(false)
   const [generatedByKey, setGeneratedByKey] = useState({})
   const assetsById = useMemo(() => Object.fromEntries(assets.map((asset) => [asset.id, asset])), [assets])
-  const activeStyleLabel = style === 'custom' ? customStyle.trim() || '自定义风格' : style
+  const activeStyleLabel = style === 'custom' ? customStyle.trim() || '自定义风格' : STYLE_LABELS[style] || style
   const generationKey = `${trip?.id || 'trip'}:${mode}:${activeStyleLabel}:${withFigurine ? 'figurine' : 'plain'}`
   const generatedResult = generatedByKey[generationKey]
 
@@ -83,7 +95,10 @@ export function Generator({ trip, events, assets, figurines = [], mode, setMode 
 
   return (
     <aside className="generator">
-      <h2>生成作品</h2>
+      <div className="generator-title">
+        <h2>生成作品</h2>
+        <span>项目独立配置</span>
+      </div>
       <div className="tabs">
         <button
           className={mode === 'plog' ? 'active' : ''}
@@ -104,26 +119,29 @@ export function Generator({ trip, events, assets, figurines = [], mode, setMode 
           Vlog
         </button>
       </div>
-      <div className="preview-label">
-        <span>预览</span>
-        <span>{mode === 'plog' ? '3:4 长图' : '9:16 · 30 秒'}</span>
+      <div className="generator-section-title">
+        <span>模板选择</span>
+        <small>{mode === 'plog' ? '胶片日记' : '动态短片'}</small>
       </div>
-      {mode === 'plog' ? (
-        <PlogPreview trip={trip} events={events} assets={assets} style={style} generatedResult={generatedResult} withFigurine={withFigurine} />
-      ) : (
-        <VlogPreview assets={assets} playing={playing} onPlay={() => setPlaying((current) => !current)} />
-      )}
-      <label className="style-select">
-        <span>风格</span>
-        <select value={style} onChange={(e) => setStyle(e.target.value)}>
-          <option value="journal">温暖手账</option>
-          <option value="editorial">旅行杂志</option>
-          <option value="minimal">极简留白</option>
-          <option value="cinematic">电影霓虹</option>
-          <option value="toy">手办旅行</option>
-          <option value="custom">自定义风格</option>
-        </select>
-      </label>
+      <div className="template-preview">
+        {mode === 'plog' ? (
+          <PlogPreview trip={trip} events={events} assets={assets} style={style} generatedResult={generatedResult} withFigurine={withFigurine} />
+        ) : (
+          <VlogPreview assets={assets} playing={playing} onPlay={() => setPlaying((current) => !current)} />
+        )}
+      </div>
+      <ProjectFigurineStudio figurines={figurines} onChange={onFigurinesChange} />
+      <div className="generator-section-title">
+        <span>风格选择</span>
+        <small>{activeStyleLabel}</small>
+      </div>
+      <div className="style-grid" role="group" aria-label="风格选择">
+        {STYLE_OPTIONS.map(([value, label]) => (
+          <button key={value} type="button" className={style === value ? 'active' : ''} onClick={() => setStyle(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
       {style === 'custom' ? (
         <label className="custom-style">
           <span>自定义</span>
@@ -134,6 +152,25 @@ export function Generator({ trip, events, assets, figurines = [], mode, setMode 
         <input type="checkbox" checked={withFigurine} onChange={(event) => setWithFigurine(event.target.checked)} />
         额外生成手办旅行版本{figurines.length ? ` · ${figurines.length} 个手办` : ''}
       </label>
+      <div className="generator-section-title">
+        <span>音乐选择</span>
+      </div>
+      <div className="music-card">
+        <span className="music-cover">♪</span>
+        <div>
+          <strong>Sunset Drive</strong>
+          <small>Ghostwriter Official</small>
+        </div>
+        <i />
+      </div>
+      <div className="generator-section-title">
+        <span>画面比例</span>
+      </div>
+      <div className="ratio-grid">
+        <button type="button">9:16</button>
+        <button type="button" className="active">16:9</button>
+        <button type="button">1:1</button>
+      </div>
       <button className={`primary generate ${state}`} onClick={state === 'done' && mode === 'plog' ? downloadPlog : generate}>
         <Icon name={state === 'done' && mode === 'plog' ? 'download' : 'spark'} />
         {state === 'working' ? 'AI生成中…' : state === 'done' && mode === 'plog' ? '下载 Plog' : state === 'done' ? '重新生成' : '生成作品'}
