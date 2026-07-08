@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { seedAssets } from '../data/seedData'
 import { api } from '../lib/api'
 import { TimelineEvent } from './TimelineEvent'
 
@@ -13,7 +12,7 @@ export function SharePage({ slug }) {
       .catch((error) => setState({ loading: false, trip: null, error: error.message }))
   }, [slug])
 
-  const assets = useMemo(() => [...(state.trip?.assets || []), ...(state.trip?.seedAssets || seedAssets)], [state.trip])
+  const assets = useMemo(() => [...(state.trip?.assets || []), ...(state.trip?.seedAssets || [])], [state.trip])
   const assetsById = useMemo(() => Object.fromEntries(assets.map((asset) => [asset.id, asset])), [assets])
 
   if (state.loading) return <main className="share-page">正在加载分享页…</main>

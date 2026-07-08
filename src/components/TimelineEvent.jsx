@@ -1,6 +1,7 @@
 import { Icon } from './Icon'
+import { DisplayImage } from './DisplayImage'
 
-export function TimelineEvent({ event, assetsById, selected, onSelect, onStory }) {
+export function TimelineEvent({ event, assetsById, selected, onSelect, onStory, onPreview = () => {} }) {
   return (
     <article className={`timeline-event ${selected ? 'selected' : ''}`} onClick={onSelect}>
       <span className="timeline-node" />
@@ -11,7 +12,20 @@ export function TimelineEvent({ event, assetsById, selected, onSelect, onStory }
       <div className="event-body">
         <div className="event-photos">
           {event.images.map((id) =>
-            assetsById[id] ? <img key={id} src={assetsById[id].src} alt={assetsById[id].alt || event.title} /> : null,
+            assetsById[id] ? (
+              <button
+                key={id}
+                type="button"
+                className="event-photo"
+                onClick={(clickEvent) => {
+                  clickEvent.stopPropagation()
+                  onPreview(assetsById[id])
+                }}
+                title="打开图片"
+              >
+                <DisplayImage asset={assetsById[id]} alt={assetsById[id].alt || event.title} />
+              </button>
+            ) : null,
           )}
         </div>
         <div className="event-meta">
@@ -35,7 +49,7 @@ export function TimelineEvent({ event, assetsById, selected, onSelect, onStory }
         </label>
       </div>
       {event.figurine ? <span className="figurine-tag">● 手办出镜</span> : null}
-      {event.source === 'ai' ? <span className="confidence-tag">AI {Math.round((event.confidence || 0) * 100)}%</span> : null}
+      {event.source === 'ai' ? <span className="confidence-tag" title="由 AI 自动整理，可手动修改">AI整理</span> : null}
     </article>
   )
 }

@@ -159,6 +159,20 @@ function summarizeDate(date) {
   return `${String(parsed.getMonth() + 1).padStart(2, '0')}.${String(parsed.getDate()).padStart(2, '0')}`
 }
 
+function tripDayLabels(trip) {
+  const start = trip.startDate ? new Date(`${trip.startDate}T00:00:00`) : null
+  const end = trip.endDate ? new Date(`${trip.endDate}T00:00:00`) : start
+  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return []
+
+  const labels = []
+  const cursor = new Date(start)
+  while (cursor <= end && labels.length < 31) {
+    labels.push(summarizeDate(cursor.toISOString()))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return labels
+}
+
 function heuristicAnalysis(asset) {
   const lower = `${asset.name || ''} ${asset.alt || ''}`.toLowerCase()
   const place =
@@ -224,9 +238,15 @@ async function analyzeAssetWithAI(asset, buffer) {
 }
 
 function buildTimeline(trip, analyses) {
+  const dayLabels = tripDayLabels(trip)
+  const shouldSpreadAcrossTrip =
+    dayLabels.length > 1 &&
+    analyses.length > 1 &&
+    new Set(analyses.map((item) => summarizeDate(item.takenAt))).size <= 1
+
   const grouped = new Map()
-  analyses.forEach((item) => {
-    const key = summarizeDate(item.takenAt)
+  analyses.forEach((item, index) => {
+    const key = shouldSpreadAcrossTrip ? dayLabels[Math.min(index, dayLabels.length - 1)] : summarizeDate(item.takenAt)
     grouped.set(key, [...(grouped.get(key) || []), item])
   })
   if (!grouped.size) return trip.events

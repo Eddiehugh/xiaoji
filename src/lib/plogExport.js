@@ -1,4 +1,7 @@
-function loadImage(src) {
+import { resolveDisplaySrc } from './displayImage'
+
+async function loadImage(asset) {
+  const src = await resolveDisplaySrc(asset)
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => resolve(image)
@@ -22,18 +25,20 @@ export async function downloadPlogImage({ events, assetsById }) {
   ctx.fillStyle = '#6e706b'
   ctx.fillText('带着小橘，走过古城的三天', 70, 145)
 
-  const chosen = [
-    assetsById[events[0]?.images[0]],
-    assetsById[events[1]?.images[0]],
-    assetsById[events[2]?.images[0]],
-  ].filter(Boolean)
+  const seen = new Set()
+  const eventAssets = events.flatMap((event) => event.images || []).map((id) => assetsById[id]).filter(Boolean)
+  const chosen = [...eventAssets, ...Object.values(assetsById)].filter((asset) => {
+    if (seen.has(asset.id)) return false
+    seen.add(asset.id)
+    return true
+  })
 
-  const loaded = await Promise.all(chosen.map((asset) => loadImage(asset.src)))
+  const loaded = await Promise.all(chosen.map((asset) => loadImage(asset)))
 
-  if (loaded.length >= 3) {
+  if (loaded.length) {
     ctx.drawImage(loaded[0], 70, 190, 940, 600)
-    ctx.drawImage(loaded[1], 70, 820, 455, 360)
-    ctx.drawImage(loaded[2], 555, 820, 455, 360)
+    if (loaded[1]) ctx.drawImage(loaded[1], 70, 820, 455, 360)
+    if (loaded[2]) ctx.drawImage(loaded[2], 555, 820, 455, 360)
   }
 
   ctx.fillStyle = '#d84c20'

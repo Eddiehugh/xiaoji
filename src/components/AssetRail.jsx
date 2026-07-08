@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { Icon } from './Icon'
+import { DisplayImage } from './DisplayImage'
 import { ProjectList } from './ProjectList'
 
 function isSupportedImage(file) {
@@ -7,7 +8,7 @@ function isSupportedImage(file) {
   return file.type.startsWith('image/') || name.endsWith('.heic') || name.endsWith('.heif')
 }
 
-export function AssetRail({ assets, onFiles, analysing, trips, selectedTripId, onSelectTrip, onCreateTrip }) {
+export function AssetRail({ assets, onFiles, onPreview, analysing, trips, selectedTripId, onSelectTrip, onCreateTrip }) {
   const inputRef = useRef(null)
 
   const acceptFiles = (list) => onFiles(Array.from(list || []).filter(isSupportedImage))
@@ -42,10 +43,17 @@ export function AssetRail({ assets, onFiles, analysing, trips, selectedTripId, o
       />
       <div className="asset-grid">
         {assets.map((asset, index) => (
-          <figure key={asset.id} className="asset-thumb" style={{ '--delay': `${index * 30}ms` }}>
-            <img src={asset.src} alt={asset.alt || '旅行素材'} />
+          <button
+            key={asset.id}
+            type="button"
+            className="asset-thumb"
+            style={{ '--delay': `${index * 30}ms` }}
+            onClick={() => onPreview(asset)}
+            title="打开图片"
+          >
+            <DisplayImage asset={asset} alt={asset.alt || '旅行素材'} />
             {asset.isNew ? <span className="new-dot" title="新上传" /> : null}
-          </figure>
+          </button>
         ))}
       </div>
       <p className="rail-foot">上传素材会保存到后端对象存储，并触发 EXIF / OCR / 图片理解任务。</p>

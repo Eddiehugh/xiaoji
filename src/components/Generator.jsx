@@ -1,17 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { downloadPlogImage } from '../lib/plogExport'
 import { Icon } from './Icon'
 import { PlogPreview } from './PlogPreview'
 import { VlogPreview } from './VlogPreview'
 
-export function Generator({ tripId, events, assets, mode, setMode }) {
+export function Generator({ trip, events, assets, mode, setMode }) {
   const [style, setStyle] = useState('journal')
   const [state, setState] = useState('idle')
   const [job, setJob] = useState(null)
   const [error, setError] = useState('')
   const [playing, setPlaying] = useState(false)
   const assetsById = useMemo(() => Object.fromEntries(assets.map((asset) => [asset.id, asset])), [assets])
+
+  useEffect(() => {
+    setState('idle')
+    setJob(null)
+    setError('')
+    setPlaying(false)
+  }, [trip?.id])
 
   const pollJob = async (jobId) => {
     const next = await api.getJob(jobId)
@@ -30,12 +37,12 @@ export function Generator({ tripId, events, assets, mode, setMode }) {
   }
 
   const generate = async () => {
-    if (!tripId) return
+    if (!trip?.id) return
     setState('working')
     setPlaying(false)
     setError('')
     try {
-      const result = await api.createGenerationJob(tripId, { mode, style })
+      const result = await api.createGenerationJob(trip.id, { mode, style })
       setJob(result.job)
       pollJob(result.job.id)
     } catch (requestError) {
@@ -74,7 +81,7 @@ export function Generator({ tripId, events, assets, mode, setMode }) {
         <span>{mode === 'plog' ? '3:4 长图' : '9:16 · 30 秒'}</span>
       </div>
       {mode === 'plog' ? (
-        <PlogPreview events={events} assetsById={assetsById} style={style} />
+        <PlogPreview trip={trip} events={events} assets={assets} style={style} />
       ) : (
         <VlogPreview assets={assets} playing={playing} onPlay={() => setPlaying((current) => !current)} />
       )}

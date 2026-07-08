@@ -3,10 +3,10 @@ import { AssetRail } from './components/AssetRail'
 import { Generator } from './components/Generator'
 import { Header } from './components/Header'
 import { LoginPanel } from './components/LoginPanel'
+import { ImagePreviewModal } from './components/ImagePreviewModal'
 import { NewTripModal } from './components/NewTripModal'
 import { SharePage } from './components/SharePage'
 import { Workspace } from './components/Workspace'
-import { seedAssets } from './data/seedData'
 import { api, getStoredSession, login, logout } from './lib/api'
 import { normalizeImagesForUpload } from './lib/heic'
 
@@ -24,8 +24,9 @@ export function App() {
   const [syncStatus, setSyncStatus] = useState('连接后端中…')
   const [loginError, setLoginError] = useState('')
   const [shareUrl, setShareUrl] = useState('')
+  const [previewAsset, setPreviewAsset] = useState(null)
 
-  const assets = useMemo(() => [...uploads, ...(trip?.seedAssets || seedAssets)], [uploads, trip])
+  const assets = useMemo(() => [...uploads, ...(trip?.seedAssets || [])], [uploads, trip])
 
   const refreshTrips = async () => {
     const result = await api.getTrips()
@@ -171,15 +172,25 @@ export function App() {
         <AssetRail
           assets={assets}
           onFiles={addFiles}
+          onPreview={setPreviewAsset}
           analysing={analysing}
           trips={trips}
           selectedTripId={trip?.id}
           onSelectTrip={loadTrip}
           onCreateTrip={() => setShowNew(true)}
         />
-        <Workspace trip={trip} events={events} setEvents={setEvents} assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} />
-        <Generator tripId={trip?.id} events={events} assets={assets} mode={mode} setMode={setMode} />
+        <Workspace
+          trip={trip}
+          events={events}
+          setEvents={setEvents}
+          assets={assets}
+          selectedId={selectedId}
+          setSelectedId={setSelectedId}
+          onPreview={setPreviewAsset}
+        />
+        <Generator trip={trip} events={events} assets={assets} mode={mode} setMode={setMode} />
       </div>
+      {previewAsset ? <ImagePreviewModal asset={previewAsset} onClose={() => setPreviewAsset(null)} /> : null}
       {showNew ? <NewTripModal onClose={() => setShowNew(false)} onCreate={createTrip} /> : null}
     </div>
   )

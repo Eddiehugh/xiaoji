@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Icon } from './Icon'
 import { TimelineEvent } from './TimelineEvent'
 
-export function Workspace({ trip, events, setEvents, assets, selectedId, setSelectedId }) {
+export function Workspace({ trip, events, setEvents, assets, selectedId, setSelectedId, onPreview }) {
   const assetsById = useMemo(() => Object.fromEntries(assets.map((asset) => [asset.id, asset])), [assets])
 
   return (
@@ -40,6 +40,7 @@ export function Workspace({ trip, events, setEvents, assets, selectedId, setSele
             assetsById={assetsById}
             selected={event.id === selectedId}
             onSelect={() => setSelectedId(event.id)}
+            onPreview={onPreview}
             onStory={(story) =>
               setEvents((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, story } : item)))
             }
