@@ -255,6 +255,9 @@ async function runAnalysisJob(jobId) {
   const job = db.jobs.find((item) => item.id === jobId)
   if (!job || job.status === 'done') return
   job.status = 'running'
+  job.stage = 'ai-generating'
+  job.message = 'AI生成中'
+  job.progress = 10
   job.startedAt = Date.now()
   await saveDb(db)
 
@@ -263,7 +266,13 @@ async function runAnalysisJob(jobId) {
     const trip = current.trips.find((item) => item.id === job.tripId)
     const assets = current.assets.filter((asset) => job.assetIds.includes(asset.id))
     const analyses = []
-    for (const asset of assets) {
+    for (const [index, asset] of assets.entries()) {
+      const target = current.jobs.find((item) => item.id === jobId)
+      target.stage = 'ai-generating'
+      target.message = `AI生成中：正在理解第 ${index + 1}/${assets.length} 张照片`
+      target.progress = Math.max(15, Math.round(((index + 1) / Math.max(assets.length, 1)) * 80))
+      await saveDb(current)
+
       const buffer = await readFile(path.join(objectsDir, asset.objectKey))
       asset.analysis = await analyzeAssetWithAI(asset, buffer)
       asset.updatedAt = Date.now()
@@ -277,6 +286,8 @@ async function runAnalysisJob(jobId) {
 
     const target = current.jobs.find((item) => item.id === jobId)
     target.status = 'done'
+    target.stage = 'completed'
+    target.message = 'AI生成完成'
     target.progress = 100
     target.result = { assetCount: assets.length, eventCount: trip.events.length, analyses }
     target.finishedAt = Date.now()
@@ -285,6 +296,8 @@ async function runAnalysisJob(jobId) {
     const failed = await loadDb()
     const target = failed.jobs.find((item) => item.id === jobId)
     target.status = 'failed'
+    target.stage = 'failed'
+    target.message = 'AI生成失败'
     target.error = error.message
     target.finishedAt = Date.now()
     await saveDb(failed)
@@ -296,6 +309,8 @@ async function runGenerationJob(jobId) {
   const job = db.jobs.find((item) => item.id === jobId)
   if (!job || job.status === 'done') return
   job.status = 'running'
+  job.stage = 'ai-generating'
+  job.message = 'AI生成中'
   job.progress = 35
   job.startedAt = Date.now()
   await saveDb(db)
@@ -303,9 +318,12 @@ async function runGenerationJob(jobId) {
   setTimeout(async () => {
     const current = await loadDb()
     const target = current.jobs.find((item) => item.id === jobId)
+    if (!target) return
     const trip = current.trips.find((item) => item.id === target.tripId)
-    if (!target || !trip) return
+    if (!trip) return
     target.status = 'done'
+    target.stage = 'completed'
+    target.message = 'AI生成完成'
     target.progress = 100
     target.result = {
       title: `${trip.title} ${target.mode === 'vlog' ? 'Vlog' : 'Plog'}`,
@@ -437,6 +455,8 @@ async function route(req, res) {
         type: 'asset-analysis',
         assetIds: created.map((asset) => asset.id),
         status: 'queued',
+        stage: 'queued',
+        message: '等待AI生成',
         progress: 0,
         attempts: 1,
         createdAt: Date.now(),
@@ -456,6 +476,8 @@ async function route(req, res) {
         mode: input.mode || 'plog',
         style: input.style || 'journal',
         status: 'queued',
+        stage: 'queued',
+        message: '等待AI生成',
         progress: 0,
         attempts: 1,
         createdAt: Date.now(),

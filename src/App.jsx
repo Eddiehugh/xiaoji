@@ -102,7 +102,7 @@ export function App() {
       setAnalysing(false)
       return
     }
-    setSyncStatus(`照片理解任务 ${result.job.status}`)
+    setSyncStatus(result.job.message || 'AI生成中')
     setTimeout(() => pollAnalysisJob(jobId), 1000)
   }
 
@@ -115,7 +115,7 @@ export function App() {
       setSyncStatus('正在上传到对象存储…')
       const result = await api.uploadAssets(trip.id, uploadFiles)
       setUploads((prev) => [...result.assets, ...prev])
-      setSyncStatus('上传成功，正在分析 EXIF / OCR / 图片内容…')
+      setSyncStatus('AI生成中：正在分析 EXIF / OCR / 图片内容…')
       pollAnalysisJob(result.job.id)
     } catch (error) {
       setAnalysing(false)

@@ -88,9 +88,9 @@ export function Generator({ tripId, events, assets, mode, setMode }) {
       </label>
       <button className={`primary generate ${state}`} onClick={state === 'done' && mode === 'plog' ? downloadPlog : generate}>
         <Icon name={state === 'done' && mode === 'plog' ? 'download' : 'spark'} />
-        {state === 'working' ? '任务生成中…' : state === 'done' && mode === 'plog' ? '下载 Plog' : state === 'done' ? '重新生成' : '生成作品'}
+        {state === 'working' ? 'AI生成中…' : state === 'done' && mode === 'plog' ? '下载 Plog' : state === 'done' ? '重新生成' : '生成作品'}
       </button>
-      {job ? <p className="job-line">任务 {job.status} · 尝试 {job.attempts || 1} 次</p> : null}
+      {job ? <p className="job-line">{job.message || (job.status === 'running' ? 'AI生成中' : `任务 ${job.status}`)} · 尝试 {job.attempts || 1} 次</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
       <p className="generator-foot">{state === 'done' ? '作品任务已完成，可继续调整风格或重试。' : '任务队列会记录状态，失败后可重试'}</p>
     </aside>

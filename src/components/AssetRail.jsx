@@ -29,8 +29,8 @@ export function AssetRail({ assets, onFiles, analysing, trips, selectedTripId, o
         }}
       >
         <Icon name={analysing ? 'spark' : 'upload'} size={24} />
-        <strong>{analysing ? '正在理解照片…' : '继续上传'}</strong>
-        <span>{analysing ? '提取时间、地点与场景' : 'HEIC 会自动转为 JPEG 展示'}</span>
+        <strong>{analysing ? 'AI生成中' : '继续上传'}</strong>
+        <span>{analysing ? '正在提取时间、地点与场景' : 'HEIC 会自动转为 JPEG 展示'}</span>
       </button>
       <input
         ref={inputRef}
