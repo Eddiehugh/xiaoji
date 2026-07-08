@@ -4,7 +4,7 @@
 
 ## 当前能力
 
-- 图片拖拽或选择上传，支持 JPG、PNG、WebP、HEIC/HEIF
+- 图片拖拽或选择上传，支持 JPG、PNG、WebP、HEIC/HEIF，HEIC 会在浏览器端转为 JPEG 以便展示
 - 后端上传接口和本地对象存储持久化图片
 - EXIF / OCR / 图片理解驱动的自动时间线整理
 - 生成任务队列，Plog / Vlog 生成状态可追踪、可重试

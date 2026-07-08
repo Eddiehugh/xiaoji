@@ -8,6 +8,7 @@ import { SharePage } from './components/SharePage'
 import { Workspace } from './components/Workspace'
 import { seedAssets } from './data/seedData'
 import { api, getStoredSession, login, logout } from './lib/api'
+import { normalizeImagesForUpload } from './lib/heic'
 
 export function App() {
   const shareMatch = window.location.pathname.match(/^\/share\/([^/]+)/)
@@ -108,9 +109,11 @@ export function App() {
   const addFiles = async (files) => {
     if (!files.length || !trip?.id) return
     setAnalysing(true)
-    setSyncStatus('正在上传到对象存储…')
+    setSyncStatus('正在处理照片格式…')
     try {
-      const result = await api.uploadAssets(trip.id, files)
+      const uploadFiles = await normalizeImagesForUpload(files)
+      setSyncStatus('正在上传到对象存储…')
+      const result = await api.uploadAssets(trip.id, uploadFiles)
       setUploads((prev) => [...result.assets, ...prev])
       setSyncStatus('上传成功，正在分析 EXIF / OCR / 图片内容…')
       pollAnalysisJob(result.job.id)
