@@ -13,6 +13,8 @@ function displayTime(time) {
 }
 
 export function TimelineEvent({ event, assetsById, selected, onSelect, onStory, onPreview = () => {} }) {
+  const imageIds = Array.isArray(event.images) ? event.images : []
+
   return (
     <article className={`timeline-event ${selected ? 'selected' : ''}`} onClick={onSelect}>
       <span className="timeline-node" />
@@ -23,7 +25,7 @@ export function TimelineEvent({ event, assetsById, selected, onSelect, onStory, 
       </div>
       <div className="event-body">
         <div className="event-photos">
-          {event.images.map((id) =>
+          {imageIds.map((id) =>
             assetsById[id] ? (
               <button
                 key={id}
@@ -53,7 +55,7 @@ export function TimelineEvent({ event, assetsById, selected, onSelect, onStory, 
         <label className="story-field">
           <Icon name="edit" size={15} />
           <input
-            value={event.story}
+            value={event.story || ''}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => onStory(e.target.value)}
             aria-label={`${event.title}故事`}

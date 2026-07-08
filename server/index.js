@@ -41,7 +41,7 @@ async function loadDb() {
 
 async function saveDb(db) {
   await mkdir(storageDir, { recursive: true })
-  const tmp = `${dbPath}.${process.pid}.tmp`
+  const tmp = `${dbPath}.${process.pid}.${randomUUID()}.tmp`
   await writeFile(tmp, JSON.stringify(db, null, 2))
   await rename(tmp, dbPath)
 }

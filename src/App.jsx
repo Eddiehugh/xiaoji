@@ -28,6 +28,7 @@ export function App() {
   const [previewAsset, setPreviewAsset] = useState(null)
 
   const assets = useMemo(() => [...uploads, ...(trip?.seedAssets || [])], [uploads, trip])
+  const resolvedShareUrl = useMemo(() => (shareUrl ? new URL(shareUrl, window.location.origin).href : ''), [shareUrl])
 
   const refreshTrips = async () => {
     const result = await api.getTrips()
@@ -186,9 +187,8 @@ export function App() {
         syncStatus={syncStatus}
       />
       {shareUrl ? (
-        <a className="share-banner" href={shareUrl} target="_blank" rel="noreferrer">
-          分享页已生成：{window.location.origin}
-          {shareUrl}
+        <a className="share-banner" href={resolvedShareUrl} target="_blank" rel="noreferrer">
+          分享页已生成：{resolvedShareUrl}
         </a>
       ) : null}
       <div className="app-grid">

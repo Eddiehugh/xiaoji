@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { downloadPlogImage } from '../lib/plogExport'
 import { Icon } from './Icon'
@@ -30,8 +30,12 @@ export function Generator({ trip, events, assets, figurines = [], onFigurinesCha
   const activeStyleLabel = style === 'custom' ? customStyle.trim() || '自定义风格' : STYLE_LABELS[style] || style
   const generationKey = `${trip?.id || 'trip'}:${mode}:${activeStyleLabel}:${withFigurine ? 'figurine' : 'plain'}`
   const generatedResult = generatedByKey[generationKey]
+  const activeGenerationRef = useRef(null)
+  const latestGenerationKeyRef = useRef(generationKey)
+  latestGenerationKeyRef.current = generationKey
 
   useEffect(() => {
+    activeGenerationRef.current = null
     setState('idle')
     setJob(null)
     setError('')
@@ -42,50 +46,73 @@ export function Generator({ trip, events, assets, figurines = [], onFigurinesCha
     if (generatedResult) {
       setJob(generatedResult.job)
       setState('done')
+      setError('')
       if (mode === 'vlog') setPlaying(true)
       return
     }
     setState('idle')
     setJob(null)
     setPlaying(false)
-  }, [generatedResult, mode])
+  }, [generationKey, generatedResult, mode])
 
-  const pollJob = async (jobId, key) => {
-    const next = await api.getJob(jobId)
-    setJob(next.job)
-    if (next.job.status === 'done') {
-      setGeneratedByKey((current) => ({
-        ...current,
-        [key]: {
-          job: next.job,
-          style: activeStyleLabel,
-          mode,
-          withFigurine,
-          generatedAt: Date.now(),
-        },
-      }))
-      setState('done')
-      if (mode === 'vlog') setPlaying(true)
-      return
+  const pollJob = async (jobId, snapshot) => {
+    const isCurrent = () => activeGenerationRef.current?.jobId === jobId && latestGenerationKeyRef.current === snapshot.key
+    try {
+      const next = await api.getJob(jobId)
+      if (isCurrent()) setJob(next.job)
+      if (next.job.status === 'done') {
+        const shouldUpdateCurrentView = isCurrent()
+        setGeneratedByKey((current) => ({
+          ...current,
+          [snapshot.key]: {
+            job: next.job,
+            style: snapshot.style,
+            mode: snapshot.mode,
+            withFigurine: snapshot.withFigurine,
+            generatedAt: Date.now(),
+          },
+        }))
+        if (activeGenerationRef.current?.jobId === jobId) activeGenerationRef.current = null
+        if (shouldUpdateCurrentView) {
+          setState('done')
+          setError('')
+          if (snapshot.mode === 'vlog') setPlaying(true)
+        }
+        return
+      }
+      if (next.job.status === 'failed') {
+        const shouldUpdateCurrentView = isCurrent()
+        if (activeGenerationRef.current?.jobId === jobId) activeGenerationRef.current = null
+        if (shouldUpdateCurrentView) {
+          setState('failed')
+          setError(next.job.error || '生成失败')
+        }
+        return
+      }
+      setTimeout(() => pollJob(jobId, snapshot), 900)
+    } catch (pollError) {
+      const shouldUpdateCurrentView = isCurrent()
+      if (activeGenerationRef.current?.jobId === jobId) activeGenerationRef.current = null
+      if (shouldUpdateCurrentView) {
+        setState('failed')
+        setError(pollError.message || '任务状态读取失败')
+      }
     }
-    if (next.job.status === 'failed') {
-      setState('failed')
-      setError(next.job.error || '生成失败')
-      return
-    }
-    setTimeout(() => pollJob(jobId, key), 900)
   }
 
   const generate = async () => {
     if (!trip?.id) return
+    const snapshot = { key: generationKey, style: activeStyleLabel, mode, withFigurine }
     setState('working')
     setPlaying(false)
     setError('')
     try {
       const result = await api.createGenerationJob(trip.id, { mode, style: activeStyleLabel, withFigurine })
       setJob(result.job)
-      pollJob(result.job.id, generationKey)
+      activeGenerationRef.current = { jobId: result.job.id, key: snapshot.key }
+      pollJob(result.job.id, snapshot)
     } catch (requestError) {
+      activeGenerationRef.current = null
       setState('failed')
       setError(requestError.message)
     }
