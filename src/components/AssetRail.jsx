@@ -8,14 +8,14 @@ function isSupportedImage(file) {
   return file.type.startsWith('image/') || name.endsWith('.heic') || name.endsWith('.heif')
 }
 
-export function AssetRail({ assets, onFiles, onPreview, analysing, trips, selectedTripId, onSelectTrip, onCreateTrip }) {
+export function AssetRail({ assets, onFiles, onPreview, analysing, trips, selectedTripId, onSelectTrip, onCreateTrip, onDeleteTrip }) {
   const inputRef = useRef(null)
 
   const acceptFiles = (list) => onFiles(Array.from(list || []).filter(isSupportedImage))
 
   return (
     <aside className="asset-rail">
-      <ProjectList trips={trips} selectedId={selectedTripId} onSelect={onSelectTrip} onCreate={onCreateTrip} />
+      <ProjectList trips={trips} selectedId={selectedTripId} onSelect={onSelectTrip} onCreate={onCreateTrip} onDelete={onDeleteTrip} />
       <div className="panel-title">
         <h2>照片库</h2>
         <span>全部照片⌄</span>

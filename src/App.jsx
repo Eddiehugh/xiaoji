@@ -133,6 +133,34 @@ export function App() {
     await loadTrip(result.trip.id)
   }
 
+  const deleteTrip = async (tripId) => {
+    const target = trips.find((item) => item.id === tripId)
+    const confirmed = window.confirm(`确定删除「${target?.title || '这个项目'}」吗？项目时间线、上传素材和分享页都会从列表中移除。`)
+    if (!confirmed) return
+
+    try {
+      await api.deleteTrip(tripId)
+      const nextTrips = await refreshTrips()
+      if (trip?.id === tripId) {
+        const nextTrip = nextTrips.find((item) => item.id !== tripId) || null
+        if (nextTrip) {
+          await loadTrip(nextTrip.id)
+        } else {
+          setTrip(null)
+          setUploads([])
+          setEvents([])
+          setSelectedId('')
+          setShareUrl('')
+          setSyncStatus('项目已删除，当前没有旅行项目')
+        }
+      } else {
+        setSyncStatus('项目已删除')
+      }
+    } catch (error) {
+      setSyncStatus(`项目删除失败：${error.message}`)
+    }
+  }
+
   const updateFigurines = async (figurines) => {
     if (!trip?.id) return
     const nextTrip = { ...trip, figurines }
@@ -201,6 +229,7 @@ export function App() {
           selectedTripId={trip?.id}
           onSelectTrip={loadTrip}
           onCreateTrip={() => setShowNew(true)}
+          onDeleteTrip={deleteTrip}
         />
         <Workspace
           trip={trip}

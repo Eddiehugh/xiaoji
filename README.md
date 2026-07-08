@@ -27,13 +27,15 @@
 
 ## 本地运行
 
-复制环境变量：
+本地启动 Web 和后端不强制要求配置外部 AI API。未配置 `DASHSCOPE_API_KEY` 或 `OPENAI_API_KEY` 时，可以登录、创建/删除项目、查看示例数据、编辑时间线和生成本地预览；但上传照片触发“照片理解”时会明确显示 API 未调用成功，不会静默走兜底分析。
+
+如需启用照片理解，复制环境变量：
 
 ```bash
 cp .env.example .env.local
 ```
 
-然后在 `.env.local` 中填入 `DASHSCOPE_API_KEY`。该文件已被 `.gitignore` 排除，不会提交到 Git。
+然后在 `.env.local` 中填入 `DASHSCOPE_API_KEY` 或 `OPENAI_API_KEY`。该文件已被 `.gitignore` 排除，不会提交到 Git。
 
 一键启动：
 

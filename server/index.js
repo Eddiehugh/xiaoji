@@ -52,7 +52,7 @@ function json(res, status, body) {
     'cache-control': 'no-store',
     'access-control-allow-origin': '*',
     'access-control-allow-headers': 'authorization,content-type',
-    'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS',
+    'access-control-allow-methods': 'GET,POST,PATCH,DELETE,OPTIONS',
   })
   res.end(JSON.stringify(body))
 }
@@ -197,7 +197,9 @@ function heuristicAnalysis(asset) {
 }
 
 async function analyzeAssetWithAI(asset, buffer) {
-  if (!aiApiKey) return heuristicAnalysis(asset)
+  if (!aiApiKey) {
+    throw new Error('未配置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY，照片理解 API 未调用成功')
+  }
 
   const dataUrl = `data:${asset.type};base64,${buffer.toString('base64')}`
   const payload = {
@@ -229,12 +231,12 @@ async function analyzeAssetWithAI(asset, buffer) {
       headers: { authorization: `Bearer ${aiApiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    if (!response.ok) throw new Error(`AI request failed: ${response.status}`)
+    if (!response.ok) throw new Error(`照片理解 API 调用失败：HTTP ${response.status}`)
     const result = await response.json()
     const content = result.choices?.[0]?.message?.content || '{}'
     return { ...heuristicAnalysis(asset), ...JSON.parse(content) }
   } catch (error) {
-    return { ...heuristicAnalysis(asset), aiError: error.message }
+    throw new Error(error.message || '照片理解 API 调用失败')
   }
 }
 
@@ -456,6 +458,14 @@ export async function route(req, res) {
     if (!trip) return json(res, 404, { error: 'not_found' })
     const action = tripMatch[2]
     if (req.method === 'GET' && !action) return json(res, 200, { trip: publicTrip(db, trip) })
+    if (req.method === 'DELETE' && !action) {
+      db.trips = db.trips.filter((item) => item.id !== trip.id)
+      db.assets = db.assets.filter((asset) => asset.tripId !== trip.id)
+      db.jobs = db.jobs.filter((job) => job.tripId !== trip.id)
+      db.shares = db.shares.filter((share) => share.tripId !== trip.id)
+      await saveDb(db)
+      return json(res, 200, { deleted: true, tripId: trip.id })
+    }
     if (req.method === 'PATCH' && !action) {
       const input = await readJson(req)
       if (Array.isArray(input.events)) trip.events = input.events

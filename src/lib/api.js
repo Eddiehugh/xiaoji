@@ -62,6 +62,10 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  deleteTrip: (tripId) =>
+    request(`/api/trips/${tripId}`, {
+      method: 'DELETE',
+    }),
   uploadAssets: (tripId, files) => {
     const form = new FormData()
     files.forEach((file) => form.append('files', file, file.name))
