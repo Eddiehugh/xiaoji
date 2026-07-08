@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "start:product": "node scripts/start-product.mjs",
     "dev": "vite",
     "api": "node server/index.js",
     "build": "vite build",

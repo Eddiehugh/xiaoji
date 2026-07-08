@@ -35,13 +35,24 @@ cp .env.example .env.local
 
 然后在 `.env.local` 中填入 `DASHSCOPE_API_KEY`。该文件已被 `.gitignore` 排除，不会提交到 Git。
 
-启动后端：
+一键启动：
+
+- macOS 直接双击项目根目录里的 `启动小迹.command`
+- 或在终端运行：
+
+```bash
+npm run start:product
+```
+
+启动器会自动安装缺失依赖、启动后端和前端，并打开浏览器。
+
+手动启动后端：
 
 ```bash
 npm run api
 ```
 
-另开一个终端启动前端：
+另开一个终端手动启动前端：
 
 ```bash
 npm install
